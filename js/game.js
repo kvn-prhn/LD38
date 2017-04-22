@@ -1,25 +1,63 @@
 
+// constants
+
+var TUG_BOAT = 0;
+var BATTLE_BOAT = 1;
+
+function g_handleOnPointerDown(ev) {
+	//console.log(ev);
+	// have the controlling ship move towards where the player clicked???
+	
+	if (game.data.controlling == TUG_BOAT && game.data.tug_boat != undefined) {
+		// shoot grapple
+		game.data.tug_boat.shootProjectile(ev.gameWorldX, ev.gameWorldY);
+	} else  if (game.data.controlling == BATTLE_BOAT && game.data.battle_boat != undefined) {
+		// shoot missle
+		game.data.battle_boat.launchMissle(ev.gameWorldX, ev.gameWorldY);
+	}
+}
+
+
 /* Game namespace */
 var game = {
 
     // an object where to store game information
     data : {
+		// the level that is being played
+		playedLevel : undefined,
+		levelTitle  : "",          // title of the current level.
         // score
-        score : 0
+        score : 0,
+		specialTokens : 0,             // how many special tokens the player found.
+		 
+		controlling : undefined,
+		controlling_change_debounce : false,
+		
+		// global references to things
+		tug_boat : undefined,
+		battle_boat : undefined,
+		
+		
     },
 
-
+	// the input event handling functions
+	handleOnPointerDown : g_handleOnPointerDown,
+	
     // Run on page load.
     "onload" : function () {
         // Initialize the video.
-        if (!me.video.init(960, 640, {wrapper : "screen", scale : "auto"})) {
+        if (!me.video.init(20 * 32, 15 * 32/*960, 640*/, {wrapper : "screen", scale : "auto"})) {
             alert("Your browser does not support HTML5 canvas.");
             return;
         }
 
         // Initialize the audio.
         me.audio.init("mp3,ogg");
-
+		me.sys.gravity = 0;
+		
+		// set the initialLevel.
+		this.data.playedLevel = "level1";
+		
         // set and load all resources.
         // (this will also automatically switch to the loading screen)
         me.loader.preload(game.resources, this.loaded.bind(this));
@@ -29,10 +67,35 @@ var game = {
     "loaded" : function () {
         me.state.set(me.state.MENU, new game.TitleScreen());
         me.state.set(me.state.PLAY, new game.PlayScreen());
-
+        me.state.set(me.state.GAME_END, new game.VictoryScreen());
+        me.state.set(me.state.GAMEOVER, new game.GameOverScreen());
+		
+		// register the key inputs
+		me.input.bindKey(me.input.KEY.X, "change_controlling", false);  // change what boat you control
+		me.input.bindKey(me.input.KEY.W, "forward", true);
+		me.input.bindKey(me.input.KEY.S, "backward", true, true);
+		me.input.bindKey(me.input.KEY.A, "rotate_counterclockwise", true);
+		me.input.bindKey(me.input.KEY.D, "rotate_clockwise", true);
+		
+		// registered pointer input in the starting of the Play screen
+		//var screenRect = new me.Rect(0, 0, me.video.renderer.getWidth(), me.video.renderer.getHeight());
+		//me.input.registerPointerEvent('pointerdown', screenRect, this.handleOnPointerDown.bind(this));
+		
         // add our player entity in the entity pool
-        me.pool.register("mainPlayer", game.PlayerEntity);
-
+        me.pool.register("battleBoat", game.BattleBoatEntity);          // player's battle boat
+        me.pool.register("tugBoat", game.TugBoatEntity);                // player's tug boat
+        me.pool.register("victimBoat", game.VictimBoatEntity);          // victim boat that must be brought to victory zone
+        me.pool.register("bombBoat", game.BombBoatEntity);          			// Dangerous boat that can explode when hit by battle boat
+		me.pool.register("lever", game.LeverEntity);                    // lever that can change sinkable walls
+		me.pool.register("debris", game.DebrisEntity);                  // debris that battle boat can destroy
+		me.pool.register("strongDebris", game.StrongDebrisEntity);      // special debris that has to be blown up with bomb ship
+		me.pool.register("sinkableWall", game.SinkableWallEntity);      // sinkable wall that can go underwater with lever
+		me.pool.register("grappleProjectile", game.GrappleProjectile);  // grapple object the tug boat throws
+		me.pool.register("tempSprite", game.TempSprite);                // generic tempory sprite for effects
+		me.pool.register("victoryZone", game.VictoryZone);              // victory zone that victim boat must be brough to.
+		me.pool.register("special", game.SpecialToken);                 // Special token the player can find
+		
+		
         // Start the game.
         me.state.change(me.state.PLAY);
     }
