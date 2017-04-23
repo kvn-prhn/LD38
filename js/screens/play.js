@@ -1,6 +1,6 @@
 var playScreenTransitioning = false;
 
-function playScreen_goToNextLevel() {
+function playScreen_DoTransition() {
 	if (game.data.playedLevel == "FINISH") {
 		console.log("FInished with the game");
 	} else {
@@ -36,6 +36,9 @@ game.PlayScreen = me.ScreenObject.extend({
         // Can also be forced by specifying a "Infinity" z value to the addChild function.
         this.HUD = new game.HUD.Container();
         me.game.world.addChild(this.HUD, 1200);
+		
+        this.HUD.addChild(new game.HUD.ControlIndicator(5, 5));
+        this.HUD.addChild(new game.HUD.LevelIndicator(10, 400));
 		
 		// register the pointer event.
 		me.input.registerPointerEvent('pointerdown', this.HUD, game.handleOnPointerDown);

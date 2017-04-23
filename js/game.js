@@ -5,15 +5,33 @@ var TUG_BOAT = 0;
 var BATTLE_BOAT = 1;
 
 function g_handleOnPointerDown(ev) {
-	//console.log(ev);
+	console.log(ev);
 	// have the controlling ship move towards where the player clicked???
-	
+	var realX = ev.gameWorldX;   // find the real position
+	var realY = ev.gameWorldY;    
+	console.log(realX, realY);
 	if (game.data.controlling == TUG_BOAT && game.data.tug_boat != undefined) {
 		// shoot grapple
-		game.data.tug_boat.shootProjectile(ev.gameWorldX, ev.gameWorldY);
+		game.data.tug_boat.shootProjectile(realX, realY);
 	} else  if (game.data.controlling == BATTLE_BOAT && game.data.battle_boat != undefined) {
 		// shoot missle
-		game.data.battle_boat.launchMissle(ev.gameWorldX, ev.gameWorldY);
+		game.data.battle_boat.launchMissle(realX, realY);
+	}
+}
+
+// Title screen and transition specific events.
+function g_handleOnPointerDownTitle(ev) {
+	if (game.data.onTitleScreen) {
+		if (game.data.titleStateOn == 1 && game.data.textScrollProgress > 4100) {    // 1 can't be skipped early.
+			game.data.titleStateOn++;
+		} else if (game.data.titleStateOn != 1) {
+			game.data.titleStateOn++;
+		}
+		console.log(game.data.titleStateOn);
+		if (game.data.titleStateOn > 1) {
+			me.state.change(me.state.PLAY);   // move to the play screen.
+			playScreen_DoTransition();        // refresh everything for this state.
+		}
 	}
 }
 
@@ -37,16 +55,21 @@ var game = {
 		tug_boat : undefined,
 		battle_boat : undefined,
 		
-		
+		// title screen specific variables
+		titleStateOn : 0,
+		onTitleScreen : false,
+		textScrollProgress : -1
     },
 
 	// the input event handling functions
 	handleOnPointerDown : g_handleOnPointerDown,
+	handleOnPointerDownTitle : g_handleOnPointerDownTitle,
 	
     // Run on page load.
     "onload" : function () {
         // Initialize the video.
-        if (!me.video.init(20 * 32, 15 * 32/*960, 640*/, {wrapper : "screen", scale : "auto"})) {
+		// 20 * 15, 15 * 32
+        if (!me.video.init(640, 480, {wrapper : "screen", scale : "auto"})) {
             alert("Your browser does not support HTML5 canvas.");
             return;
         }
@@ -77,10 +100,6 @@ var game = {
 		me.input.bindKey(me.input.KEY.A, "rotate_counterclockwise", true);
 		me.input.bindKey(me.input.KEY.D, "rotate_clockwise", true);
 		
-		// registered pointer input in the starting of the Play screen
-		//var screenRect = new me.Rect(0, 0, me.video.renderer.getWidth(), me.video.renderer.getHeight());
-		//me.input.registerPointerEvent('pointerdown', screenRect, this.handleOnPointerDown.bind(this));
-		
         // add our player entity in the entity pool
         me.pool.register("battleBoat", game.BattleBoatEntity);          // player's battle boat
         me.pool.register("tugBoat", game.TugBoatEntity);                // player's tug boat
@@ -98,5 +117,6 @@ var game = {
 		
         // Start the game.
         me.state.change(me.state.PLAY);
+        //me.state.change(me.state.MENU);  // TODO: REVERT
     }
 };

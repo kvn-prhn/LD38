@@ -220,28 +220,30 @@ game.BattleBoatEntity = game.BoatEntity.extend({
         return (this._super(game.BoatEntity, 'update', [dt]) || updatedAnything);
     },
 	
-	launchMissle : function(x, y) {
+	launchMissle : function(_x, _y) {
 		console.log("Launching missle");
 		// make smoke appear
 		// set missle on course
 		if (this.missle == undefined) {
+			var initialPosition = new me.Vector2d( 
+				this.pos.x + (this.width / 2),
+				this.pos.y + (this.height / 2)
+			);
 			me.game.world.addChild(me.pool.pull("tempSprite", 
-				this.pos.x + (this.width / 2), this.pos.y + (this.height / 2), 
+				initialPosition.x, initialPosition.y, 
 					me.loader.getImage("smoke1"), 100), 400);
-					
-			this.missle = new me.Sprite(this.pos.x + (this.width / 2), 
-				this.pos.y + (this.height / 2), {
+			
+			this.missle = new me.Sprite(initialPosition.x, initialPosition.y, {
 				image : me.loader.getImage("bomb")
 			});
-			this.missleShadow = new me.Sprite(this.pos.x + (this.width / 2), 
-				this.pos.y + (this.height / 2), {
+			this.missleShadow = new me.Sprite(initialPosition.x, initialPosition.y, {
 				image : me.loader.getImage("bombShadow")
 			});
 			// the values for the projectile animation.
 			this.missleHeight = 0;
 			var missleLengthTravel = new me.Vector2d(
-				this.missle.pos.x - x,
-				this.missle.pos.y - y
+				initialPosition.x - _x,
+				initialPosition.y - _y
 			).length();
 			this.missleHalfwayLength = missleLengthTravel / 2;
 			this.missleCurveAdjust = missleLengthTravel / 15;  // the farther, the more.
@@ -249,7 +251,7 @@ game.BattleBoatEntity = game.BoatEntity.extend({
 			this.missle.alwaysUpdate = true;
 			me.game.world.addChild(this.missle, 450);
 			me.game.world.addChild(this.missleShadow, 440);
-			this.targetLocation = {tx : x, ty : y};
+			this.targetLocation = {tx : _x, ty : _y};
 		}
 	},
 	
@@ -433,16 +435,14 @@ game.VictimBoatEntity = game.BoatEntity.extend({
 		// see if its inside of the victory zone
 		var victoryZone = me.game.world.getChildByName("victoryZone")[0];    // get the victory zone (that SHOULD be there)
 		if (victoryZone !== undefined && victoryZone.containsPointV(this.pos)) {
-			console.log("ALL DONE WITH THIS LEVEL");
 			// win the level
 			// go to the next level/intermediate screen thing
 			game.data.playedLevel = me.levelDirector.getCurrentLevel().nextLevel;
-			console.log(playScreenTransitioning);
 			// level won: go to the next state
 			if (!playScreenTransitioning) {
 				playScreenTransitioning = true;   // to prevent multiple updates
 				//me.state.current().goToNextLevel();
-				playScreen_goToNextLevel();
+				playScreen_DoTransition();
 			}
 			return false;
 		} 
@@ -651,6 +651,7 @@ game.SpecialToken = me.Entity.extend({
         return true;
     }
 });
+
 
 
 
