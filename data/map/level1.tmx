@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" orientation="orthogonal" renderorder="right-down" width="40" height="15" tilewidth="32" tileheight="32" nextobjectid="93">
+<map version="1.0" orientation="orthogonal" renderorder="right-down" width="40" height="15" tilewidth="32" tileheight="32" nextobjectid="97">
  <properties>
   <property name="levelTitle" value="Level 1"/>
   <property name="nextLevel" value="level2"/>
@@ -56,11 +56,17 @@
   </object>
  </objectgroup>
  <objectgroup color="#55ff00" name="Entities">
-  <object id="44" name="tugBoat" x="224" y="288" width="30" height="30"/>
-  <object id="45" name="battleBoat" x="96" y="256" width="62" height="62"/>
-  <object id="46" name="victimBoat" x="1152" y="160" width="30" height="30"/>
+  <object id="93" name="battleBoat" x="128" y="256" width="62" height="62">
+   <ellipse/>
+  </object>
+  <object id="95" name="tugBoat" x="224" y="288" width="30" height="30">
+   <ellipse/>
+  </object>
+  <object id="96" name="victimBoat" x="1120" y="128" width="30" height="30">
+   <ellipse/>
+  </object>
  </objectgroup>
- <objectgroup name="collisionLayer" visible="0">
+ <objectgroup name="collisionLayer">
   <object id="56" x="0" y="0" width="1280" height="32"/>
   <object id="57" x="0" y="32" width="96" height="64"/>
   <object id="58" x="96" y="32" width="800" height="32"/>

@@ -12,6 +12,9 @@ game.BoatEntity = me.Entity.extend({
 		this.boatMoveSpeed = 2;     // how fast the boat can move
 		this.boatAccelRate = 0.2;   // how fast the boat can accelerate
 		this.boatTurnSpeed = 0.02;  // how fast the boat turns
+		this.waterEffCounter = 0;   // variable for water effects.
+		this.splashCounter = 180;     // variable to track when to play the boat splash sound
+		this.boatMovingSound = "boatMoving";
     },
 
 	update : function (dt) {
@@ -82,6 +85,35 @@ game.BoatEntity = me.Entity.extend({
 			this.body.vel.normalize().scale(this.boatMoveSpeed);
 		}
 		
+		// make the neat water effects
+		if (this.body.vel.length() > 0.1) {
+			this.waterEffCounter += (dt * this.body.vel.length() * 3);  // more the fast you go
+			var delay = 17;
+			if (this.waterEffCounter > delay) {
+				var xScale = 1.3 * this.body.vel.x / this.body.vel.length();
+				var yScale = 1.3 * this.body.vel.y / this.body.vel.length();
+				var initX = this.pos.x + (this.width/2) - (xScale * (this.width/2));
+				var initY = this.pos.y + (this.height/2) - (yScale * (this.height/2));
+				var spreadRange = (this.width / 3);
+				me.game.world.addChild(me.pool.pull("tempSprite", 
+						initX + (Math.random() * spreadRange) - (spreadRange/2), 
+						initY + (Math.random() * spreadRange) - (spreadRange/2), 
+						me.loader.getImage("splash" +    // random splash sprite
+						(1 + Math.floor(Math.random() * 3))), 
+					200), 1	);
+				this.waterEffCounter -= delay;
+			}
+		}
+		
+		if (rotated || this.body.vel.length() > 0.1) {
+			// boat moving sound effect
+			this.splashCounter += dt;
+			if (this.splashCounter > 220) {
+				me.audio.play(this.boatMovingSound, false, null, 0.2);
+				this.splashCounter -= 220;
+			}
+		}
+		
         // apply physics to the body (this moves the entity)
         this.body.update(dt);
 	
@@ -102,6 +134,13 @@ game.BoatEntity = me.Entity.extend({
 		if (other instanceof game.VictoryZone) {
 			return false;
 		}
+		
+		// TEMP: Make boats not collidable
+		// TODO: make it so boats CAN collide sometime later hopefully.
+		if (other instanceof game.BoatEntity) {
+			return false;
+		}
+		
         // Make all other objects solid
         return true;
     }
@@ -133,6 +172,7 @@ game.BattleBoatEntity = game.BoatEntity.extend({
 		this.boatTurnSpeed = 0.01;   // how fast the boat turns
 		this.alwaysUpdate = true;       // since this has the controls for 
 									   // switching in it, it should always update.
+		this.boatMovingSound = "boatMoving_slow";   // slighly different moving sound
     },
 
     update : function (dt) {
@@ -164,6 +204,8 @@ game.BattleBoatEntity = game.BoatEntity.extend({
 				me.game.world.addChild(new game.TempSprite( 
 						this.missleShadow.pos.x , this.missleShadow.pos.y , 
 						me.loader.getImage("explosion"), 200), 100);
+				// explosion sound effet
+				me.audio.play("explosion");
 				// destroy any nearby debris
 				var tempMissleRef = this.missleShadow;
 				me.game.world.forEach(function(child) {
@@ -195,14 +237,12 @@ game.BattleBoatEntity = game.BoatEntity.extend({
 				game.data.tug_boat.boatAccel = 0;     // stop the tug_boat acceleration before changing
 				game.data.controlling = BATTLE_BOAT;
 				me.game.viewport.follow(game.data.battle_boat);
-				console.log("battle");
 			} else {
 				game.data.battle_boat.boatAccel = 0;    // stop the battle boat acceleration before changing
 				game.data.controlling = TUG_BOAT; 
 				me.game.viewport.follow(game.data.tug_boat);
-				console.log("tug");
 			}
-			
+			me.audio.play("changeBoat");
 			me.video.renderer.clear();
 			me.video.renderer.flush();
 			me.game.repaint();
@@ -221,7 +261,6 @@ game.BattleBoatEntity = game.BoatEntity.extend({
     },
 	
 	launchMissle : function(_x, _y) {
-		console.log("Launching missle");
 		// make smoke appear
 		// set missle on course
 		if (this.missle == undefined) {
@@ -232,7 +271,8 @@ game.BattleBoatEntity = game.BoatEntity.extend({
 			me.game.world.addChild(me.pool.pull("tempSprite", 
 				initialPosition.x, initialPosition.y, 
 					me.loader.getImage("smoke1"), 100), 400);
-			
+			// cannon shooting sound
+			me.audio.play("cannonFire");
 			this.missle = new me.Sprite(initialPosition.x, initialPosition.y, {
 				image : me.loader.getImage("bomb")
 			});
@@ -247,11 +287,10 @@ game.BattleBoatEntity = game.BoatEntity.extend({
 			).length();
 			this.missleHalfwayLength = missleLengthTravel / 2;
 			this.missleCurveAdjust = missleLengthTravel / 15;  // the farther, the more.
-			
 			this.missle.alwaysUpdate = true;
 			me.game.world.addChild(this.missle, 450);
 			me.game.world.addChild(this.missleShadow, 440);
-			this.targetLocation = {tx : _x, ty : _y};
+			this.targetLocation = {tx : _x, ty : _y};			
 		}
 	},
 	
@@ -262,6 +301,16 @@ game.BattleBoatEntity = game.BoatEntity.extend({
 		}
 		
 		this._super(game.BoatEntity, 'draw', [r]);
+	},
+	
+	
+	onCollision : function(response, other) {
+		if (other instanceof game.IceSheetEntity) {             // destroy ice sheets
+			me.game.world.removeChild(other);
+			me.audio.play("iceBreaking");
+			return false;
+		}
+		return this._super(game.BoatEntity, 'onCollision', [response, other]);
 	}
 });
 
@@ -347,6 +396,7 @@ game.TugBoatEntity = game.BoatEntity.extend({
 	shootProjectile : function(x, y) {
 		if (this.tuggingBoat != undefined) {
 			this.tuggingBoat = undefined; // release grapple
+			me.audio.play("grappleRelease");
 			return;
 		}
 		if (this.grappleProj == undefined) {
@@ -354,6 +404,7 @@ game.TugBoatEntity = game.BoatEntity.extend({
 				x - this.pos.x,
 				y - this.pos.y
 			).normalize().scale(7);
+			me.audio.play("grappleFire");
 			this.grappleProj = me.pool.pull("grappleProjectile", this.pos.x, this.pos.y, {
 				image : "grapple",
 				width : 16,
@@ -395,19 +446,21 @@ game.GrappleProjectile = me.Entity.extend({
 			return false;  // ignore the tug boat.
 		} else if (other instanceof game.LeverEntity && !this.killMe) {             // activate levers
 			other.onActivated(); // activate the lever.
+			me.audio.play("leverSwitch");
 			this.killMe = true;
 			return false;
 		} else if (other instanceof game.SinkableWallEntity && other.underwater == true) {  // ignore underwater walls
 			return false;
 		} else if (other instanceof game.BattleBoatEntity || other instanceof game.VictimBoatEntity) {
 			this.tugBoatRef.tuggingBoat = other;
-			//console.log("Now tugging a boat");
+			me.audio.play("grappleHook");
 			this.killMe = true;
 			return false;
 		} else if (other instanceof game.VictoryZone) {         // can't collide with victory zone.
 			return false;
 		}
 		
+		me.audio.play("grappleFailHit");
         // Make all other objects solid
 		this.killMe = true; // die when you hit anything else.
         return true;
@@ -487,7 +540,6 @@ game.BombBoatEntity = game.BoatEntity.extend({
  */
 game.LeverEntity = me.Entity.extend({
 	init: function(x, y, settings) {
-		settings.image = "lever";
 		this._super(me.Entity, 'init', [x, y, settings]);
 		this.connected_wall_id = "default";
 		if (settings.connected_wall_id !== undefined) {
@@ -582,7 +634,15 @@ game.SinkableWallEntity = me.Entity.extend({
 	}
 })
 
-
+// A game element that can only be destroyed by the battle boat.
+game.IceSheetEntity = me.Entity.extend({ 
+	
+	init : function(x, y, settings) {
+		settings.image = "iceSheet"
+		this._super(me.Entity, 'init', [x, y, settings]);
+	}
+	
+});
 
 /*********** Other entities *********************/
 
